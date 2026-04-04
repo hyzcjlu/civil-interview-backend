@@ -42,7 +42,7 @@ def post_process(llm_result, answer, question_data):
 
     # 如果差异过大，以维度累加为准（或者记录警告）
     if abs(calculated_total - reported_total) > 1:
-        print(f"⚠️ 警告：LLM 计算的总分 ({reported_total}) 与维度累加 ({calculated_total}) 不一致，已修正为累加值。")
+        print(f"[WARN] LLM total ({reported_total}) != dimension sum ({calculated_total}), corrected.")
         llm_result['total_score'] = calculated_total
 
     # 限制总分不超过满分
