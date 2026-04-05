@@ -472,6 +472,123 @@ async def change_password(data: dict, current_user: AuthUser = Depends(get_curre
     user_data["hashed_password"] = get_password_hash(data.get("new_password"))
     return {"success": True, "message": "密码修改成功"}
 
+@app.get("/user/provinces")
+async def get_provinces():
+    """获取省份列表"""
+    return [
+        {"code": "national", "name": "国家公务员考试"},
+        {"code": "beijing", "name": "北京"},
+        {"code": "guangdong", "name": "广东"},
+        {"code": "zhejiang", "name": "浙江"},
+        {"code": "sichuan", "name": "四川"},
+        {"code": "jiangsu", "name": "江苏"},
+        {"code": "henan", "name": "河南"},
+        {"code": "shandong", "name": "山东"}
+    ]
+
+@app.get("/user/me")
+async def get_current_user_info(current_user: AuthUser = Depends(get_current_user)):
+    """获取当前用户信息"""
+    return {
+        "username": current_user.username,
+        "full_name": current_user.full_name,
+        "email": current_user.email
+    }
+
+@app.get("/history")
+async def get_history(current: int = 1, pageSize: int = 10, total: int = 0, current_user: AuthUser = Depends(get_current_user)):
+    """获取历史记录列表"""
+    history_list = mock_db.get("history", [])
+    # 分页
+    start = (current - 1) * pageSize
+    end = start + pageSize
+    paginated = history_list[start:end]
+    return {
+        "list": paginated,
+        "total": len(history_list),
+        "current": current,
+        "pageSize": pageSize
+    }
+
+@app.get("/history/stats")
+async def get_history_stats(current_user: AuthUser = Depends(get_current_user)):
+    """获取历史统计"""
+    history_list = mock_db.get("history", [])
+
+    # 维度定义（与前端 constants.js 对齐）
+    dim_defs = [
+        {"key": "legal", "name": "法治思维", "maxScore": 20},
+        {"key": "practical", "name": "实务落地", "maxScore": 20},
+        {"key": "logic", "name": "逻辑结构", "maxScore": 15},
+        {"key": "expression", "name": "语言表达", "maxScore": 15},
+        {"key": "analysis", "name": "综合分析", "maxScore": 15},
+        {"key": "emergency", "name": "应急应变", "maxScore": 15},
+    ]
+
+    if not history_list:
+        dimension_averages = [
+            {"name": d["name"], "avg": 0, "maxScore": d["maxScore"]}
+            for d in dim_defs
+        ]
+        return {
+            "totalExams": 0,
+            "avgScore": 0,
+            "bestScore": 0,
+            "weakestDimension": "",
+            "dimensionAverages": dimension_averages,
+        }
+
+    scores = [h.get("totalScore", 0) for h in history_list]
+
+    # 计算各维度平均分
+    dim_totals = {d["name"]: [] for d in dim_defs}
+    for h in history_list:
+        for dim in h.get("dimensions", []):
+            name = dim.get("name")
+            if name in dim_totals:
+                dim_totals[name].append(dim.get("score", 0))
+
+    dimension_averages = []
+    for d in dim_defs:
+        vals = dim_totals[d["name"]]
+        avg = round(sum(vals) / len(vals), 2) if vals else 0
+        dimension_averages.append({
+            "name": d["name"],
+            "avg": avg,
+            "maxScore": d["maxScore"],
+        })
+
+    # 找出薄弱维度（得分百分比最低的）
+    weakest = ""
+    lowest_pct = 100
+    for da in dimension_averages:
+        if da["maxScore"] > 0 and da["avg"] > 0:
+            pct = da["avg"] / da["maxScore"] * 100
+            if pct < lowest_pct:
+                lowest_pct = pct
+                weakest = da["name"]
+
+    return {
+        "totalExams": len(history_list),
+        "avgScore": round(sum(scores) / len(scores), 2),
+        "bestScore": max(scores) if scores else 0,
+        "weakestDimension": weakest,
+        "dimensionAverages": dimension_averages,
+    }
+
+@app.get("/history/trend")
+async def get_history_trend(days: int = 30, current_user: AuthUser = Depends(get_current_user)):
+    """获取历史趋势"""
+    # 返回模拟趋势数据
+    import random
+    trend = []
+    for i in range(min(days, 7)):
+        trend.append({
+            "date": (datetime.now(timezone.utc) - timedelta(days=i)).strftime("%Y-%m-%d"),
+            "score": random.randint(60, 95)
+        })
+    return trend[::-1]  # 倒序
+
 if __name__ == "__main__":
     import uvicorn
     logger.info("[START] API server starting...")
