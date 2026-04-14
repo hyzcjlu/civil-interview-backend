@@ -2,12 +2,19 @@
 
 FastAPI + SQLAlchemy + MySQL/SQLite 后端服务
 
+## 环境要求
+
+- **Python** 3.9+
+- **MySQL** 8.x（可选，不装则自动使用 SQLite）
+- **通义千问 API Key**（用于 AI 评分，可在 [阿里云百炼](https://bailian.console.aliyun.com/) 申请）
+
 ## 快速启动
 
-### 1. 安装 Python 依赖
+### 1. 克隆并安装依赖
 
 ```bash
-cd backend
+git clone https://github.com/hyzcjlu/civil-interview-backend.git
+cd civil-interview-backend
 pip install -r requirements.txt
 ```
 
